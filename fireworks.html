@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fireworks Animation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #b355e9;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            background-color: #ff3b2b;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="fireworksCanvas"></canvas>
+    <button class="back-btn" onclick="window.location.href='index.html'">Back to Main Page</button>
+
+    <!-- Sound Effect -->
+    <audio id="explosionSound" src="Firework Sound Effect.mp3" preload="auto"></audio>
+
+    <script>
+        const canvas = document.getElementById("fireworksCanvas");
+        const ctx = canvas.getContext("2d");
+        const explosionSound = document.getElementById("explosionSound");
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        class Firework {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.particles = [];
+                this.trail = [];
+                this.exploded = false;
+                this.targetY = Math.random() * canvas.height / 2 + 100;
+                this.launchSpeed = 10 + Math.random() * 5;
+            }
+
+            update() {
+                if (!this.exploded) {
+                    this.trail.push({
+                        x: this.x,
+                        y: this.y
+                    });
+                    if (this.trail.length > 10) this.trail.shift();
+
+                    this.y -= this.launchSpeed;
+                    if (this.y <= this.targetY) {
+                        this.explode();
+                    }
+                } else {
+                    for (let i = this.particles.length - 1; i >= 0; i--) {
+                        const particle = this.particles[i];
+                        particle.update();
+                        if (particle.alpha <= 0) {
+                            this.particles.splice(i, 1);
+                        }
+                    }
+                }
+            }
+
+            explode() {
+                this.exploded = true;
+                playExplosionSound(); // Play sound effect
+
+                const numParticles = 100;
+                for (let i = 0; i < numParticles; i++) {
+                    this.particles.push(new Particle(this.x, this.y, Math.random() * 2 * Math.PI, Math.random() * 3 + 1));
+                }
+            }
+
+            draw() {
+                if (!this.exploded) {
+                    ctx.fillStyle = "purple";
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    for (let i = 0; i < this.trail.length; i++) {
+                        const opacity = i / this.trail.length;
+                        ctx.fillStyle = `rgba(148, 0, 211, ${opacity})`;
+                        ctx.beginPath();
+                        ctx.arc(this.trail[i].x, this.trail[i].y, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else {
+                    for (const particle of this.particles) {
+                        particle.draw();
+                    }
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y, angle, speed) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle;
+                this.speed = speed;
+                this.alpha = 1;
+                this.size = 3;
+            }
+
+            update() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                this.alpha -= 0.02;
+                if (this.alpha < 0) this.alpha = 0;
+            }
+
+            draw() {
+                ctx.fillStyle = `rgba(255, 0, 255, ${this.alpha})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        let fireworks = [];
+
+        function createFireworks() {
+            const positions = [
+                canvas.width / 4,
+                canvas.width / 2,
+                (3 * canvas.width) / 4,
+            ];
+
+            for (const pos of positions) {
+                fireworks.push(new Firework(pos, canvas.height));
+            }
+        }
+
+        let textOffsetY = 0;
+        let textColorShift = 0;
+
+        function drawText() {
+            const text = "I Love You Kristine Joy Estacio";
+
+            textOffsetY = Math.sin(Date.now() / 500) * 10;
+
+            const gradient = ctx.createLinearGradient(0, canvas.height - 100, canvas.width, canvas.height - 100);
+            gradient.addColorStop(0, `hsl(${textColorShift}, 100%, 50%)`);
+            gradient.addColorStop(0.5, `hsl(${(textColorShift + 120) % 360}, 100%, 50%)`);
+            gradient.addColorStop(1, `hsl(${(textColorShift + 240) % 360}, 100%, 50%)`);
+
+            ctx.font = "48px Arial";
+            ctx.textAlign = "center";
+            ctx.fillStyle = gradient;
+
+            ctx.shadowColor = "white";
+            ctx.shadowBlur = 20;
+
+            ctx.fillText(text, canvas.width / 2, canvas.height - 50 + textOffsetY);
+
+            textColorShift = (textColorShift + 1) % 360;
+            ctx.shadowBlur = 0;
+        }
+
+        function playExplosionSound() {
+            explosionSound.currentTime = 0;
+            explosionSound.play().catch((error) => {
+                console.error("Error playing sound:", error);
+            });
+        }
+
+        function animate() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                const firework = fireworks[i];
+                firework.update();
+                firework.draw();
+
+                if (firework.exploded && firework.particles.length === 0) {
+                    fireworks.splice(i, 1);
+                }
+            }
+
+            drawText();
+            requestAnimationFrame(animate);
+        }
+
+        createFireworks();
+        animate();
+
+        setInterval(createFireworks, 1000);
+    </script>
+</body>
+
+</html>
